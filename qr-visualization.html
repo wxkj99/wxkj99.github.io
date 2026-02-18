@@ -111,14 +111,24 @@ input[type="number"] { width: 60px; padding: 4px; }
 <span id="inputToggle">▼</span>
 </div>
 <div class="input-content" id="inputContent">
+<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px;">
 <label>矩阵大小: <input type="number" id="matrixSize" min="2" max="10" value="7"></label>
 <button onclick="updateMatrixSize()">调整大小</button>
-<button onclick="randomMatrix()">随机生成</button>
+<button onclick="clearMatrix()">清零</button>
+</div>
+<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px;">
+<span style="font-size:12px;color:#666;">整体:</span>
+<button onclick="randomMatrix()">随机</button>
+<button onclick="randomSymmetric()">随机对称</button>
+<button onclick="randomSkewSymmetric()">随机反对称</button>
+<button onclick="randomHessenberg()">随机Hessenberg</button>
+</div>
+<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+<span style="font-size:12px;color:#666;">局部:</span>
 <button onclick="randomDiagonal()">随机对角</button>
 <button onclick="randomSubdiagonal()">随机次对角</button>
 <button onclick="randomSuperdiagonal()">随机超对角</button>
-<button onclick="randomHessenberg()">随机Hessenberg</button>
-<button onclick="clearMatrix()">清零</button>
+</div>
 <div id="matrixInputContainer"></div>
 <div class="error" id="errorMsg"></div>
 </div>
@@ -254,6 +264,27 @@ function randomSubdiagonal() {
 function randomSuperdiagonal() {
   for (let i = 0; i < n - 1; i++) {
     document.getElementById(`input_${i}_${i+1}`).value = (Math.random() * 20 - 10).toFixed(2);
+  }
+}
+
+function randomSymmetric() {
+  for (let i = 0; i < n; i++) {
+    for (let j = i; j < n; j++) {
+      const v = (Math.random() * 20 - 10).toFixed(2);
+      document.getElementById(`input_${i}_${j}`).value = v;
+      document.getElementById(`input_${j}_${i}`).value = v;
+    }
+  }
+}
+
+function randomSkewSymmetric() {
+  for (let i = 0; i < n; i++) {
+    document.getElementById(`input_${i}_${i}`).value = '0';
+    for (let j = i + 1; j < n; j++) {
+      const v = (Math.random() * 20 - 10).toFixed(2);
+      document.getElementById(`input_${i}_${j}`).value = v;
+      document.getElementById(`input_${j}_${i}`).value = (-parseFloat(v)).toFixed(2);
+    }
   }
 }
 
@@ -584,7 +615,7 @@ function qrIterations(start, end, iter) {
   }
 
   for (let k = start; k < end; k++) {
-    if (Math.abs(matrix[k + 1][k]) <= epsilon * (Math.abs(matrix[k][k]) + Math.abs(matrix[k + 1][k + 1]))) {
+    if (Math.abs(matrix[k + 1][k]) < epsilon) {
       matrix[k + 1][k] = 0;
       steps.push({ type: 'deflation', row: k, mat: copyMatrix(matrix), desc: `收缩: 位置(${k+2},${k+1})置零` });
       qrIterations(k + 1, end, 0);
