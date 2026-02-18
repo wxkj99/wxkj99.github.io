@@ -753,6 +753,10 @@ function isHighlightStep(step) {
   return step.type === 'highlight_rows' || step.type === 'highlight_cols';
 }
 
+function isInfoStep(step) {
+  return step.type === 'phase' || step.type === 'shift' || step.type === 'deflation' || step.type === 'direct';
+}
+
 function nextStep() {
   const stepSize = getStepSize();
   if (stepSize === 'phase') {
@@ -760,10 +764,14 @@ function nextStep() {
       currentStep++;
     } while (currentStep < steps.length && (steps[currentStep].type !== 'phase' || isHighlightStep(steps[currentStep])));
   } else if (stepSize === 2) {
-    let count = 0;
-    while (currentStep < steps.length && count < 2) {
+    let updateCount = 0;
+    while (currentStep < steps.length) {
       currentStep++;
-      if (currentStep < steps.length && !isHighlightStep(steps[currentStep])) count++;
+      if (currentStep >= steps.length) break;
+      const s = steps[currentStep];
+      if (isHighlightStep(s)) continue;
+      if (isInfoStep(s)) break;
+      if (s.type === 'update') { updateCount++; if (updateCount >= 2) break; }
     }
   } else {
     currentStep = Math.min(currentStep + stepSize, steps.length);
@@ -787,10 +795,13 @@ function prevStep() {
       currentStep--;
     } while (currentStep > 0 && (steps[currentStep].type !== 'phase' || isHighlightStep(steps[currentStep])));
   } else if (stepSize === 2) {
-    let count = 0;
-    while (currentStep > 0 && count < 2) {
+    let updateCount = 0;
+    while (currentStep > 0) {
       currentStep--;
-      if (currentStep > 0 && !isHighlightStep(steps[currentStep])) count++;
+      const s = steps[currentStep];
+      if (isHighlightStep(s)) continue;
+      if (isInfoStep(s)) break;
+      if (s.type === 'update') { updateCount++; if (updateCount >= 2) break; }
     }
   } else {
     currentStep = Math.max(currentStep - stepSize, 0);
