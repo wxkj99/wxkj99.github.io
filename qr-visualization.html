@@ -29,11 +29,9 @@ button.btn-start:disabled { background: #ccc; }
 .cell { display: flex; align-items: center; justify-content: center; font-weight: 600; position: relative; }
 .cell.highlight-row { background: rgba(255, 152, 0, 0.3) !important; }
 .cell.highlight-col { background: rgba(33, 150, 243, 0.3) !important; }
-.cell.converged { opacity: 0.35; }
 .region-box { position: absolute; pointer-events: none; box-sizing: border-box; }
 .region-active { border: 5px solid #4CAF50; }
 .region-active-double { border: 5px double #4CAF50; }
-.region-converged { border: 5px dashed #999; }
 .region-shift-real { border: 4px dashed #ff6b6b; }
 .region-shift-complex { border: 4px dashed #4dabf7; }
 .info-panel { margin: 6px 0; padding: 8px 12px; background: #e3f2fd; border-radius: 4px; font-size: 13px; }
@@ -113,7 +111,7 @@ input[type="number"] { width: 60px; padding: 4px; }
 <span id="inputToggle">▼</span>
 </div>
 <div class="input-content" id="inputContent">
-<label>矩阵大小: <input type="number" id="matrixSize" min="3" max="10" value="7"></label>
+<label>矩阵大小: <input type="number" id="matrixSize" min="2" max="10" value="7"></label>
 <button onclick="updateMatrixSize()">调整大小</button>
 <button onclick="randomMatrix()">随机生成</button>
 <button onclick="randomDiagonal()">随机对角</button>
@@ -142,7 +140,6 @@ let currentStep = 0;
 let isPlaying = false;
 let playInterval = null;
 let colorMap = null;
-let convergedRegions = [];
 let eigenvalues = [];
 let globalIterCount = 0;
 
@@ -206,8 +203,8 @@ function toggleInput() {
 
 function updateMatrixSize() {
   n = parseInt(document.getElementById('matrixSize').value);
-  if (n < 3 || n > 10) {
-    showError('矩阵大小必须在3到10之间');
+  if (n < 2 || n > 10) {
+    showError('矩阵大小必须在2到10之间');
     return;
   }
   createMatrixInput();
@@ -364,12 +361,6 @@ function displayMatrix(mat, highlightRows = [], highlightCols = [], activeRegion
         if (highlightCols.includes(j)) cell.classList.add('highlight-col');
       }
 
-      const isConverged = convergedRegions.some(r =>
-        i >= r.start && i <= r.end && j >= r.start && j <= r.end &&
-        (!activeRegion || i < activeRegion.start || i > activeRegion.end)
-      );
-      if (isConverged) cell.classList.add('converged');
-
       grid.appendChild(cell);
     }
   }
@@ -408,7 +399,6 @@ function startAlgorithm() {
   colorMap = createColorMap(matrix);
   steps = [];
   currentStep = 0;
-  convergedRegions = [];
   eigenvalues = [];
   globalIterCount = 0;
 
@@ -435,20 +425,9 @@ function startAlgorithm() {
 }
 
 function generateSteps() {
-  if (n <= 2) {
-    steps.push({ type: 'direct', mat: copyMatrix(matrix), desc: '直接计算特征值' });
-    if (n === 1) {
-      eigenvalues.push(matrix[0][0]);
-    } else {
-      const a = matrix[0][0], b = matrix[0][1], c = matrix[1][0], d = matrix[1][1];
-      const tr = a + d, det = a * d - b * c;
-      const disc = tr * tr - 4 * det;
-      if (disc >= 0) {
-        eigenvalues.push((tr + Math.sqrt(disc)) / 2, (tr - Math.sqrt(disc)) / 2);
-      } else {
-        eigenvalues.push({ re: tr / 2, im: Math.sqrt(-disc) / 2 });
-      }
-    }
+  if (n === 1) {
+    steps.push({ type: 'direct', mat: copyMatrix(matrix), desc: '1×1矩阵, 直接读取特征值' });
+    eigenvalues.push(matrix[0][0]);
     return;
   }
 
@@ -523,19 +502,84 @@ function householderRight(k) {
   }
 }
 
+function applyGivensLeftByAngle(i, j, cosT, sinT) {
+  givensCS = { i, j, c: cosT, s: sinT };
+  for (let k = 0; k < n; k++) {
+    const tmp1 = cosT * matrix[i][k] + sinT * matrix[j][k];
+    const tmp2 = -sinT * matrix[i][k] + cosT * matrix[j][k];
+    matrix[i][k] = tmp1;
+    matrix[j][k] = tmp2;
+  }
+}
+
+function applyGivensRightByAngle(i, j, cosT, sinT) {
+  for (let k = 0; k < n; k++) {
+    const tmp1 = cosT * matrix[k][i] + sinT * matrix[k][j];
+    const tmp2 = -sinT * matrix[k][i] + cosT * matrix[k][j];
+    matrix[k][i] = tmp1;
+    matrix[k][j] = tmp2;
+  }
+}
+
+function finalize2x2(start, end) {
+  const a = matrix[start][start], b = matrix[start][end];
+  const c = matrix[end][start], d = matrix[end][end];
+  const tr = a + d, det = a * d - b * c;
+  const disc = tr * tr - 4 * det;
+  const ar = { start, end, shiftType: 'single' };
+
+  if (disc >= 0) {
+    const ev1 = (tr + Math.sqrt(disc)) / 2;
+    const ev2 = (tr - Math.sqrt(disc)) / 2;
+    const shift = Math.abs(d - ev1) < Math.abs(d - ev2) ? ev1 : ev2;
+
+    steps.push({ type: 'phase', phase: '2×2块上三角化', mat: copyMatrix(matrix), desc: `上三角化 [${start+1}:${end+1}]`, activeRegion: ar });
+    steps.push({ type: 'shift', shift, mat: copyMatrix(matrix), phase: '2×2块上三角化', desc: `精确位移 μ=${shift.toFixed(4)}`, activeRegion: ar });
+
+    const x = matrix[start][start] - shift;
+    const y = matrix[end][start];
+    steps.push({ type: 'highlight_rows', rows: [start, end], mat: copyMatrix(matrix), desc: '准备Givens旋转', activeRegion: ar });
+    applyGivensLeft(start, end, x, y);
+    steps.push({ type: 'update', mat: copyMatrix(matrix), desc: '左乘Givens旋转', activeRegion: ar });
+    steps.push({ type: 'highlight_cols', cols: [start, end], mat: copyMatrix(matrix), desc: '准备右乘', activeRegion: ar });
+    applyGivensRight(start, end);
+    steps.push({ type: 'update', mat: copyMatrix(matrix), desc: '右乘Givens旋转', activeRegion: ar });
+
+    if (Math.abs(matrix[end][start]) < epsilon) matrix[end][start] = 0;
+    steps.push({ type: 'phase', phase: '2×2块上三角化完成', mat: copyMatrix(matrix), desc: '次对角元已消去', activeRegion: ar });
+    eigenvalues.push(matrix[start][start], matrix[end][end]);
+  } else {
+    const re = tr / 2, im = Math.sqrt(-disc) / 2;
+    let cosT, sinT;
+    const sumOffDiag = c + b;
+    if (Math.abs(sumOffDiag) < epsilon && Math.abs(d - a) < epsilon) {
+      cosT = 1; sinT = 0;
+    } else {
+      const theta2 = Math.atan2(d - a, sumOffDiag);
+      cosT = Math.cos(theta2 / 2);
+      sinT = Math.sin(theta2 / 2);
+    }
+
+    const arC = { start, end, shiftType: 'double' };
+    steps.push({ type: 'phase', phase: '2×2块标准化', mat: copyMatrix(matrix), desc: `标准化为 [σ,β;γ,σ] [${start+1}:${end+1}]`, activeRegion: arC });
+    steps.push({ type: 'highlight_rows', rows: [start, end], mat: copyMatrix(matrix), desc: '准备Givens旋转', activeRegion: arC });
+    applyGivensLeftByAngle(start, end, cosT, sinT);
+    steps.push({ type: 'update', mat: copyMatrix(matrix), desc: '左乘Givens旋转', activeRegion: arC });
+    steps.push({ type: 'highlight_cols', cols: [start, end], mat: copyMatrix(matrix), desc: '准备右乘', activeRegion: arC });
+    applyGivensRightByAngle(start, end, cosT, sinT);
+    steps.push({ type: 'update', mat: copyMatrix(matrix), desc: '右乘Givens旋转', activeRegion: arC });
+
+    steps.push({ type: 'phase', phase: '2×2块标准化完成', mat: copyMatrix(matrix), desc: `σ=${re.toFixed(4)}, βγ<0, 虚部=±${im.toFixed(4)}`, activeRegion: arC });
+    eigenvalues.push({ re, im });
+  }
+}
+
 function qrIterations(start, end, iter) {
   if (end - start <= 1) {
-    if (end === start) eigenvalues.push(matrix[start][start]);
-    else {
-      const a = matrix[start][start], b = matrix[start][end];
-      const c = matrix[end][start], d = matrix[end][end];
-      const tr = a + d, det = a * d - b * c;
-      const disc = tr * tr - 4 * det;
-      if (disc >= 0) {
-        eigenvalues.push((tr + Math.sqrt(disc)) / 2, (tr - Math.sqrt(disc)) / 2);
-      } else {
-        eigenvalues.push({ re: tr / 2, im: Math.sqrt(-disc) / 2 });
-      }
+    if (end === start) {
+      eigenvalues.push(matrix[start][start]);
+    } else {
+      finalize2x2(start, end);
     }
     return;
   }
@@ -544,9 +588,8 @@ function qrIterations(start, end, iter) {
     if (Math.abs(matrix[k + 1][k]) <= epsilon * (Math.abs(matrix[k][k]) + Math.abs(matrix[k + 1][k + 1]))) {
       matrix[k + 1][k] = 0;
       steps.push({ type: 'deflation', row: k, mat: copyMatrix(matrix), desc: `收缩: 位置(${k+2},${k+1})置零` });
-      convergedRegions.push({ start: k + 1, end: k + 1 });
-      qrIterations(start, k, 0);
       qrIterations(k + 1, end, 0);
+      qrIterations(start, k, 0);
       return;
     }
   }
@@ -739,9 +782,6 @@ function displayCurrentStep() {
   const cols = step.cols || [];
   displayMatrix(step.mat, rows, cols, step.activeRegion || null, step.shiftBox || null);
 
-  if (step.type === 'deflation') {
-    convergedRegions.push({ start: step.row + 1, end: step.row + 1 });
-  }
 }
 
 function getStepSize() {
@@ -856,7 +896,6 @@ function jumpToProgress(event) {
 function reset() {
   if (isPlaying) togglePlay();
   currentStep = 0;
-  convergedRegions = [];
   eigenvalues = [];
   globalIterCount = 0;
   document.getElementById('startBtn').disabled = false;
