@@ -533,8 +533,7 @@ function finalize2x2(start, end) {
     const ev2 = (tr - Math.sqrt(disc)) / 2;
     const shift = Math.abs(d - ev1) < Math.abs(d - ev2) ? ev1 : ev2;
 
-    steps.push({ type: 'phase', phase: '2×2块上三角化', mat: copyMatrix(matrix), desc: `上三角化 [${start+1}:${end+1}]`, activeRegion: ar });
-    steps.push({ type: 'shift', shift, mat: copyMatrix(matrix), phase: '2×2块上三角化', desc: `精确位移 μ=${shift.toFixed(4)}`, activeRegion: ar });
+    steps.push({ type: 'shift', shift, mat: copyMatrix(matrix), phase: '2×2块上三角化', desc: `上三角化 [${start+1}:${end+1}], 精确位移 μ=${shift.toFixed(4)}`, activeRegion: ar });
 
     const x = matrix[start][start] - shift;
     const y = matrix[end][start];
@@ -629,7 +628,6 @@ function qrIterations(start, end, iter) {
 
 function singleShiftQR(start, end, shift, iterNum) {
   const ar = {start, end, shiftType: 'single'};
-  steps.push({ type: 'phase', phase: `第${iterNum}轮QR迭代 (单位移)`, mat: copyMatrix(matrix), desc: '开始单位移隐式QR步 [2×2凸起]', activeRegion: ar });
 
   const x = matrix[start][start] - shift;
   const y = matrix[start + 1][start];
@@ -662,7 +660,6 @@ function doubleShiftQR(start, end, s, t, iterNum) {
   if (end - start < 2) return;
 
   const ar = {start, end, shiftType: 'double'};
-  steps.push({ type: 'phase', phase: `第${iterNum}轮QR迭代 (双位移)`, mat: copyMatrix(matrix), desc: '开始双位移隐式QR步 [3×3凸起]', activeRegion: ar });
 
   const h11 = matrix[start][start], h12 = matrix[start][start + 1];
   const h21 = matrix[start + 1][start], h22 = matrix[start + 1][start + 1];
@@ -802,7 +799,7 @@ function nextStep() {
   if (stepSize === 'phase') {
     do {
       currentStep++;
-    } while (currentStep < steps.length && (steps[currentStep].type !== 'phase' || isHighlightStep(steps[currentStep])));
+    } while (currentStep < steps.length && steps[currentStep].type !== 'phase' && steps[currentStep].type !== 'shift');
   } else if (stepSize === 2) {
     let updateCount = 0;
     while (currentStep < steps.length) {
@@ -833,7 +830,7 @@ function prevStep() {
   if (stepSize === 'phase') {
     do {
       currentStep--;
-    } while (currentStep > 0 && (steps[currentStep].type !== 'phase' || isHighlightStep(steps[currentStep])));
+    } while (currentStep > 0 && steps[currentStep].type !== 'phase' && steps[currentStep].type !== 'shift');
   } else if (stepSize === 2) {
     let updateCount = 0;
     while (currentStep > 0) {
