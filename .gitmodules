@@ -4,3 +4,6 @@
 [submodule "qr"]
 	path = qr
 	url = https://github.com/wxkj99/QR-view-simple.git
+[submodule "mechanics"]
+	path = mechanics
+	url = https://github.com/wxkj99/mechanics-quiz.git

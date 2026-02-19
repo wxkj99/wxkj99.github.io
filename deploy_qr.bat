@@ -7,7 +7,7 @@ git push
 echo.
 copy /y "D:\programming\QR-viewer-simple\qr-visualization.html" "D:\blog\qr\qr-visualization.html"
 cd /d D:\blog
-git add qr
+git submodule update --remote qr
 git commit -m "update qr"
 git push
 echo.

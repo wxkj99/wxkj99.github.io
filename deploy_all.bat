@@ -18,8 +18,18 @@ copy /y "D:/programming/QR-viewer-simple/qr-visualization.html" "D:/blog/qr/qr-v
 :skip_qr
 
 echo.
+echo === 更新四大力学默写卷 ===
+git -C "D:/math/Mechanics" add .
+set /p msg3="Mechanics 提交信息（直接回车跳过）: "
+if "%msg3%"=="" goto skip_mechanics
+git -C "D:/math/Mechanics" commit -m "%msg3%"
+git -C "D:/math/Mechanics" push
+:skip_mechanics
+
+echo.
 echo === 同步博客 ===
 git -C "D:/blog" submodule update --remote na
+git -C "D:/blog" submodule update --remote mechanics
 git -C "D:/blog" add .
 git -C "D:/blog" commit -m "sync"
 git -C "D:/blog" push
