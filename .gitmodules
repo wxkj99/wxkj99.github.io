@@ -1,3 +1,6 @@
 [submodule "na"]
 	path = na
 	url = https://github.com/wxkj99/na-quiz.git
+[submodule "qr"]
+	path = qr
+	url = https://github.com/wxkj99/QR-view-simple.git
