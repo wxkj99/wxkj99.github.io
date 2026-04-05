@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>F5P2 挑战</title>
+  <meta name="description" content="你执后手，先手前三手由你代下。第 7 手起，由页面继续替先手应手。">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <main class="game-container">
+    <header class="page-header">
+      <p class="eyebrow">F5P2 Challenge</p>
+      <h1>你执后手，先手前三手由你代下</h1>
+      <p class="intro-copy">
+        第 7 手起，由页面继续替先手应手。
+      </p>
+      <details class="rules-panel">
+        <summary>规则说明</summary>
+        <p>棋盘是射影平面 F5P2 上的 31 点 31 线。双方轮流落子，先在同一直线上占据 5 个点的一方获胜；每条线上共有 6 个点。</p>
+      </details>
+    </header>
+
+    <section class="game-panel">
+      <div class="status-bar" id="statusRibbon">
+        <div class="status-main">
+          <span id="statusText">正在准备对局…</span>
+          <span id="statusSubtext">首次打开时会读取对局数据。</span>
+        </div>
+        <div class="status-meta">
+          <span><b id="phaseLabel">准备中</b></span>
+          <span>手数 <b id="plyLabel">0</b></span>
+          <span>最后一手 <b id="lastMoveLabel">-</b></span>
+        </div>
+      </div>
+
+      <div class="board-row">
+        <div class="affine-grid" id="affineGrid" aria-label="F5P2 棋盘主体"></div>
+        <div class="infinite-column" id="infiniteColumn" aria-label="无穷远点"></div>
+      </div>
+
+      <div class="toolbar">
+        <button id="newGameButton" class="toolbar-button toolbar-button-primary" type="button" disabled>新对局</button>
+        <button id="undoButton" class="toolbar-button" type="button" disabled>悔棋</button>
+        <label class="toolbar-toggle">
+          <input id="showIndicesToggle" type="checkbox">
+          <span>显示编号</span>
+        </label>
+      </div>
+    </section>
+
+    <div id="loadingOverlay" class="loading-overlay" aria-live="polite">
+      <div class="loading-card">
+        <div class="spinner" aria-hidden="true"></div>
+        <p id="loadingTitle">正在准备对局</p>
+        <p id="loadingMessage">请稍候，页面正在读取对局数据。</p>
+      </div>
+    </div>
+  </main>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
