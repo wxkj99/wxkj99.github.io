@@ -1,4 +1,5 @@
 const SLOPE_LABELS = ["斜率0", "斜率1", "斜率2", "斜率3", "斜率4", "斜率∞"];
+const INFINITE_POINT_ORDER = [30, 29, 27, 28, 26, 25];
 
 export function createBoardUI(doc, onMoveClick) {
   const affineGrid = doc.getElementById("affineGrid");
@@ -17,7 +18,7 @@ export function createBoardUI(doc, onMoveClick) {
   }
 
   for (let row = 0; row < 6; row += 1) {
-    const pointIndex = 25 + row;
+    const pointIndex = INFINITE_POINT_ORDER[row];
     const wrapper = doc.createElement("div");
     wrapper.className = "infinite-row";
 
